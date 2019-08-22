@@ -177,47 +177,47 @@ class SurveyRecordWriter
      * Sets up all the GeoPackage stuff so that the LTE records can be written to a log file.
      *
      * @param enable True if logging is being turned on, false if the log file should be closed.
-     * @return True if the toggling action was successful, false if the request could not be completed.
+     * @throws SQLException If something goes wrong setting up the GeoPackage log file.
      */
-    boolean enableLogging(boolean enable)
+    void enableLogging(boolean enable) throws SQLException
     {
-        try
+        if (!enable)
         {
-            if (!enable)
+            if (loggingEnabled)
             {
-                if (loggingEnabled)
-                {
-                    loggingEnabled = false;
-                    geoPackage.close(); // TODO figure out what else needs to be done to clean up.
-                    geoPackage = null;
-                }
-
-                return false;
+                loggingEnabled = false;
+                geoPackage.close(); // TODO figure out what else needs to be done to clean up.
+                geoPackage = null;
             }
 
-            if (!isExternalStorageWritable()) return false;
+            return;
+        }
 
+        if (isExternalStorageWritable())
+        {
             //final File loggingFile = getPublicStorageDir(
             //      FILE_NAME_PREFIX + "-" + formatFilenameFriendlyTime.format(System.currentTimeMillis()));
             final String loggingFile = createPublicStorageFilePath();
 
+            //final boolean created = geoPackageManager.createAtPath(DATABASE_NAME, loggingFile);
+            //final String loggingFilePath = loggingFile.getAbsolutePath();
+            //final boolean created = geoPackageManager.create(loggingFilePath);
+            //final boolean created = geoPackageManager.createFile(loggingFile);
             final boolean created = geoPackageManager.create(loggingFile);
 
             if (!created)
             {
-                final String errorMessage = "Error: Unable to create the GeoPackage file.  No logging will be recorded.";
-                Log.e(LOG_TAG, errorMessage);
-                Toast.makeText(networkSurveyActivity.getApplicationContext(), errorMessage, Toast.LENGTH_SHORT).show();
-                return false;
+                Log.e(LOG_TAG, "Unable to create the GeoPackage File.  No logging will be recorded.");
+                Toast.makeText(networkSurveyActivity.getApplicationContext(), "Error: Unable to create the GeoPackage file.  No logging will be recorded.", Toast.LENGTH_SHORT).show();
+                return;
             }
 
             geoPackage = geoPackageManager.open(loggingFile);
             if (geoPackage == null)
             {
-                final String errorMessage = "Error: Unable to open the GeoPackage file.  No logging will be recorded.";
-                Log.e(LOG_TAG, errorMessage);
-                Toast.makeText(networkSurveyActivity.getApplicationContext(), errorMessage, Toast.LENGTH_SHORT).show();
-                return false;
+                Log.e(LOG_TAG, "Unable to open the GeoPackage Database.  No logging will be recorded.");
+                Toast.makeText(networkSurveyActivity.getApplicationContext(), "Error: Unable to open the GeoPackage file.  No logging will be recorded.", Toast.LENGTH_SHORT).show();
+                return;
             }
 
             final SpatialReferenceSystem spatialReferenceSystem;
@@ -226,18 +226,9 @@ class SurveyRecordWriter
 
             geoPackage.createGeometryColumnsTable();
             createLteRecordTable(geoPackage, spatialReferenceSystem);
-
-            return loggingEnabled = true;
-        } catch (Exception e)
-        {
-            Log.e(LOG_TAG, "Caught an exception when trying to close the GeoPackage file in the onDestroy call", e);
-            if (geoPackage != null)
-            {
-                geoPackage.close();
-                geoPackage = null;
-            }
-            return false;
         }
+
+        loggingEnabled = true;
     }
 
     /**

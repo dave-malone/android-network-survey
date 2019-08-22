@@ -145,12 +145,6 @@ public class NetworkSurveyActivity extends AppCompatActivity implements
         final LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         if (gpsListener != null) locationManager.removeUpdates(gpsListener);
 
-        if (loggingEnabled.get() && surveyRecordWriter != null)
-        {
-            loggingEnabled.set(false);
-            surveyRecordWriter.enableLogging(false);
-        }
-
         if (grpcConnectionController != null)
         {
             unregisterDeviceStatusListener(grpcConnectionController);
@@ -655,7 +649,7 @@ public class NetworkSurveyActivity extends AppCompatActivity implements
     /**
      * Starts or stops writing the log file based on the current state.
      */
-    private void toggleLogging()
+    private synchronized void toggleLogging()
     {
         new ToggleLoggingTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
@@ -669,14 +663,17 @@ public class NetworkSurveyActivity extends AppCompatActivity implements
         {
             if (surveyRecordWriter != null)
             {
-                synchronized (loggingEnabled)
+                final boolean logging = !loggingEnabled.getAndSet(!loggingEnabled.get());
+                try
                 {
-                    final boolean enabled = surveyRecordWriter.enableLogging(!loggingEnabled.get());
-
-                    loggingEnabled.set(enabled);
-
-                    return enabled;
+                    surveyRecordWriter.enableLogging(logging);
+                } catch (Exception e)
+                {
+                    Log.e(LOG_TAG, "Could not setup the logging file database.  No logging will occur", e);
+                    return null;
                 }
+
+                return logging;
             }
 
             return null;
