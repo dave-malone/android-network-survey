@@ -323,7 +323,7 @@ public class NetworkSurveyService extends Service implements IConnectionStateLis
     @Override
     public void connectToMqttBroker(BrokerConnectionInfo connectionInfo)
     {
-        mqttConnection.connect(getApplicationContext(), connectionInfo);
+        mqttConnection.connect(connectionInfo);
         MqttConnectionInfo networkSurveyConnection = (MqttConnectionInfo) connectionInfo;
 
         if (networkSurveyConnection.isCellularStreamEnabled())
